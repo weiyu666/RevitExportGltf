@@ -1,2 +1,0 @@
-# RevitExportGltf
-主要是Revit的二次开发的插件，其中主要是基于Revit2018进行的，实现从Revit中把建筑模型导出来，使用的是GLTF格式的编码。

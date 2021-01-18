@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Visual;
 using Microsoft.Win32;
 using Newtonsoft.Json;
@@ -58,14 +58,15 @@ namespace RevitExportGltf
         private Stack<Transform> _transformStack = new Stack<Transform>();
         private Transform CurrentTransform { get { return _transformStack.Peek(); } }
 
-
+        private int _precision;//转换精度
         private string FileName;
         private string directory;
-        public RevitExportGltfContext(Document document, string fileName)
+        public RevitExportGltfContext(Document document, string fileName, int precisionValue)
         {
             doc = document;
             FileName = fileName;
             directory = Path.GetDirectoryName(FileName) + "\\";
+            this._precision = precisionValue;
         }
 
         string textureFolder;
@@ -779,6 +780,13 @@ namespace RevitExportGltf
 
         public RenderNodeAction OnViewBegin(ViewNode node)
         {
+            /*0到15 默认8 级别越小减面的程度越高，最优是0最低是15总共份16级
+           * SolidOrShellTessellationControls.LevelOfDetail曲面细分着色器控制lod范围0到1；
+           * ViewNode.LevelOfDetail是视图将呈现的详细程度，取值范围[0,15]Revit将在细分面时使用建议的详细程度； 否则，它将使用基于输出分辨率的默认算法。\
+           * 如果要求明确的细节级别（即正值），则使用接近有效范围中间值的值会产生非常合理的细分。 Revit使用级别8作为其“正常” LoD。
+           * 对于face.Triangulate(precision) 详细程度。 其范围是从0到1。0是最低的详细级别，而1是最高的详细级别。
+           */
+            node.LevelOfDetail = _precision;
             return RenderNodeAction.Proceed;
         }
 

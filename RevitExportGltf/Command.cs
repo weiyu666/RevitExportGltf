@@ -1,4 +1,4 @@
-﻿/**************************************************************************
+/**************************************************************************
 Copyright:MyCompany
 
 Author: chenwy
@@ -64,13 +64,15 @@ namespace RevitExportGltf
 
             //保存导出的文件 包括过滤器gltf与glb格式
             System.Windows.Forms.SaveFileDialog sdial = new System.Windows.Forms.SaveFileDialog();
-            sdial.Filter = "gltf|*.gltf|glb|*.glb";            
+            sdial.Filter = "gltf|*.gltf|glb|*.glb";
             if (sdial.ShowDialog() == DialogResult.OK)
             {
                 string filename = sdial.FileName;
                 string directory = Path.GetDirectoryName(filename) + "\\"; ;
+                //默认值减面为等级8
+                int combobox_value = 8;
                 //拿到revit的doc  CustomExporter 用户自定义导出
-                RevitExportGltfContext context = new RevitExportGltfContext(doc, sdial.FileName);
+                RevitExportGltfContext context = new RevitExportGltfContext(doc, sdial.FileName, combobox_value);
                 using (CustomExporter exporter = new CustomExporter(doc, context))
                 {
                     //是否包括Geom对象

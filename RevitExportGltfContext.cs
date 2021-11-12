@@ -247,8 +247,15 @@ namespace RevitExportGltf
             currentData.ElementName = currentElem.Name;
             try
             {
-                currentData.ElementArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED).AsValueString();
-                currentData.ElementVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED).AsValueString();
+                //在revit中不一定能获取到值
+                Parameter paraArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED);
+                if(paraArea!=null) 
+                    paraArea.AsValueString();
+                    
+                Parameter paraVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
+                if(paraVolum!=null) 
+                    paraVolum.AsValueString();
+
             }
             catch
             {

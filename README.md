@@ -26,3 +26,5 @@ gltf （作者本人的博客） 介绍https://blog.csdn.net/chenweiyu11962/arti
  gltf格式 https://zhuanlan.zhihu.com/p/65265611 
 
 解决材质的问题 https://zhuanlan.zhihu.com/p/80465384
+
+revit 二开环境配置

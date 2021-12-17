@@ -7,9 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static RevitExportGltf.Util;
 
 namespace RevitExportGltf
 {
@@ -21,6 +18,7 @@ namespace RevitExportGltf
         ObjectData RootDatas;
         ObjectData InstanceNameData;
         ObjectData currentData;
+
         public IndexedDictionary<ObjectData> currentDatas { get; }
             = new IndexedDictionary<ObjectData>();
 
@@ -133,7 +131,8 @@ namespace RevitExportGltf
 
             //写入bin文件
             directory = Path.GetDirectoryName(FileName) + "\\";
-            StreamWriter swObj = new StreamWriter(directory + "binFilePrint.txt");
+            var name = Path.GetFileNameWithoutExtension(FileName);
+            StreamWriter swObj = new StreamWriter(directory + name + "_BimFilePrint.txt");
             using (FileStream f = File.Create(directory + buffer.uri))
             {
                 using (BinaryWriter writer = new BinaryWriter(f))
@@ -176,14 +175,19 @@ namespace RevitExportGltf
             swObj.Close();
             //将属性打包到一个可序列化的容器中
             glTF model = new glTF();
-            model.asset = new glTFVersion();
+            model.asset = new glTFAsset();
             model.scenes = Scenes;
+            model.defaultScene = 0;     //默认场景从0开始
             model.nodes = Nodes.List;
             model.meshes = Meshes.List;
             model.materials = Materials.List;
-            model.textures = Textures.List;
-            model.images = Images.List;
-            model.samplers = Samplers.List;
+            if (Textures.List.Count() > 0)      //没有纹理贴图的情况
+            {
+                model.textures = Textures.List;
+                model.images = Images.List;
+                model.samplers = Samplers.List;
+
+            }
 
 
             model.buffers = Buffers;
@@ -205,10 +209,13 @@ namespace RevitExportGltf
             currentElem = doc.GetElement(elementId);
             try
             {
-                if ((BuiltInCategory)currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_Cameras ||
-                   currentElem.Category.CategoryType == CategoryType.AnalyticalModel)
+                if (currentElem.Category != null)
                 {
-                    return RenderNodeAction.Skip;
+                    if ((BuiltInCategory)currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_Cameras ||
+                       currentElem.Category.CategoryType == CategoryType.AnalyticalModel)
+                    {
+                        return RenderNodeAction.Skip;
+                    }
                 }
 
             }
@@ -224,32 +231,46 @@ namespace RevitExportGltf
             }
             try
             {
-
-                string CategoryName = currentElem.Category.Name;
-                string FamilyName = currentElem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
-                if (FamilyName == "")
+                if (currentElem.Category != null)
                 {
-                    FamilyName = CategoryName;
-                }
-                string InstanceName = currentElem.Name;
-                InstanceNameData = null;
-                List<string> Names = new List<string>() { CategoryName, FamilyName, InstanceName };
-                getitem(RootDatas, Names);
-                if (InstanceNameData == null)
-                {
-                    return RenderNodeAction.Skip;
+                    string CategoryName = currentElem.Category.Name;
+                    string FamilyName = currentElem.get_Parameter(BuiltInParameter.ELEM_FAMILY_PARAM).AsValueString();
+                    if (FamilyName == "")
+                    {
+                        FamilyName = CategoryName;
+                    }
+                    string InstanceName = currentElem.Name;
+                    InstanceNameData = null;
+                    List<string> Names = new List<string>() { CategoryName, FamilyName, InstanceName };
+                    getitem(RootDatas, Names);
+                    if (InstanceNameData == null)
+                    {
+                        return RenderNodeAction.Skip;
+                    }
                 }
 
             }
-            catch { Console.WriteLine("currentElem.Category 为null"); }
+            catch
+            {
+                Console.WriteLine("currentElem.Category 为null");
+            }
 
             currentData = new ObjectData();
             currentData.ElementId = currentElem.Id.ToString();
             currentData.ElementName = currentElem.Name;
             try
             {
-                currentData.ElementArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED).AsValueString();
-                currentData.ElementVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED).AsValueString();
+                if (currentElem.Category != null)
+                {
+                    Parameter paraArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED);
+                    if (paraArea != null)       //虽然是枚举类型但是不一定能获取到值
+                        currentData.ElementArea = paraArea.AsValueString();
+
+                    Parameter paraVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
+                    if (paraVolum != null)
+                        currentData.ElementVolum = paraVolum.AsValueString();
+
+                }
             }
             catch
             {
@@ -258,28 +279,31 @@ namespace RevitExportGltf
 
             try
             {
-
-                foreach (ObjectData similar in InstanceNameData.Children)
+                if (InstanceNameData != null)
                 {
-                    if (similar.ElementArea == currentData.ElementArea && similar.ElementVolum == currentData.ElementVolum && similar.ElementArea != null && similar.ElementVolum != null)
+                    foreach (ObjectData similar in InstanceNameData.Children)
                     {
-                        if (similar.SimilarObjectID != null)
+                        if (similar.ElementArea == currentData.ElementArea && similar.ElementVolum == currentData.ElementVolum && similar.ElementArea != null && similar.ElementVolum != null)
                         {
-                            currentData.SimilarObjectID = similar.SimilarObjectID;
+                            if (similar.SimilarObjectID != null)
+                            {
+                                currentData.SimilarObjectID = similar.SimilarObjectID;
+                            }
+                            else
+                            {
+                                currentData.SimilarObjectID = similar.ElementId;
+                            }
+                            similar.Children.Add(currentData);
+                            isHasSimilar = true;
+                            break;
                         }
-                        else
-                        {
-                            currentData.SimilarObjectID = similar.ElementId;
-                        }
-                        similar.Children.Add(currentData);
-                        isHasSimilar = true;
-                        break;
+                    }
+                    if (currentData.SimilarObjectID == null)
+                    {
+                        InstanceNameData.Children.Add(currentData);
                     }
                 }
-                if (currentData.SimilarObjectID == null)
-                {
-                    InstanceNameData.Children.Add(currentData);
-                }
+
             }
             catch
             {
@@ -441,9 +465,22 @@ namespace RevitExportGltf
                     {
                         currentAsset = node.GetAppearance();
                     }
+                    //取得Asset中贴图信息  revit2018版本 AssetProperties. 的public unsafe AssetProperty this[string name]
+                    //string textureFile = (FindTextureAsset(currentAsset as AssetProperty)["unifiedbitmap_Bitmap"]
+                    //    as AssetPropertyString).Value.Split('|')[0];
+
                     //取得Asset中贴图信息
-                    string textureFile = (FindTextureAsset(currentAsset as AssetProperty)["unifiedbitmap_Bitmap"]
-                        as AssetPropertyString).Value.Split('|')[0];
+                    var asset = FindTextureAsset(currentAsset as AssetProperty);
+                    if (asset == null)
+                    {
+                        //textureFile找不到
+                        return;
+                    }
+
+                    //取得Asset中贴图信息  revit2020版本 AssetProperties. 的 public unsafe AssetProperty FindByName(string name)
+                    var assetPropertyString = asset.FindByName("unifiedbitmap_Bitmap") as AssetPropertyString;
+                    string textureFile = assetPropertyString.Value.Split('|')[0];
+
                     //用Asset中贴图信息和注册表里的材质库地址得到贴图文件所在位置
                     texturePath = Path.Combine(textureFolder, textureFile.Replace("/", "\\"));
                 }
@@ -474,24 +511,28 @@ namespace RevitExportGltf
                 //如果贴图文件真实存在，就复制到相应位置
                 if (File.Exists(texturePath))
                 {
-                    string dirName = Path.GetFileNameWithoutExtension(FileName) + "(材质贴图)";
+                    string dirName = Path.GetFileNameWithoutExtension(FileName) + "(texture)";
                     string dir = directory + dirName;
                     if (!Directory.Exists(dir))
                     {
                         //如果不存在就创建 dir 文件夹  
                         Directory.CreateDirectory(dir);
                     }
-
-                    File.Copy(texturePath, Path.Combine(dir + "\\" + textureName), true);
+                    string dest = Path.Combine(dir + "\\" + textureName);
+                    if (!File.Exists(dest))
+                    {
+                        File.Copy(texturePath, dest, true);
+                    }
                     glTFImage image = new glTFImage();
                     //通过 uri定位到图片资源
                     image.uri = "./" + dirName + "/" + textureName;
                     Images.AddOrUpdateCurrent(m.UniqueId, image);
                     //取样器,定义图片的采样和滤波方式
                     glTFSampler sampler = new glTFSampler();
-                    sampler.magFilter = 9729;
-                    sampler.minFilter = 9987;
-                    sampler.wrapS = 10497;
+                    sampler.name = "default_sampler";
+                    sampler.magFilter = 9729;           //线性mipmap取原图中相邻像素并使用线性插值获得中间值来填充新点的颜色
+                    sampler.minFilter = 9987;           //最邻近过滤mipmap过滤
+                    sampler.wrapS = 10497;              //wrapS 、wrapT纹理在水平、垂直方向上纹理包裹方式
                     sampler.wrapT = 10497;
                     Samplers.AddOrUpdateCurrent(m.UniqueId, sampler);
                     //贴图信息,使用source和ssampler指向图片和采样器
@@ -573,15 +614,19 @@ namespace RevitExportGltf
         {
             try
             {
-                if ((BuiltInCategory)currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_Cameras ||
-                   currentElem.Category.CategoryType == CategoryType.AnalyticalModel)
+                if (currentElem.Category != null)
                 {
-                    return;
+                    if ((BuiltInCategory)currentElem.Category.Id.IntegerValue == BuiltInCategory.OST_Cameras ||
+                       currentElem.Category.CategoryType == CategoryType.AnalyticalModel)
+                    {
+                        return;
+                    }
                 }
 
             }
             catch
             {
+
                 Console.WriteLine("currentElem.Category 为null");
             }
             if (isHasSimilar == true)
@@ -603,24 +648,34 @@ namespace RevitExportGltf
             }
 
             Element e = doc.GetElement(elementId);
-            glTFMesh newMesh = new glTFMesh();
-            newMesh.primitives = new List<glTFMeshPrimitive>();
-            Meshes.AddOrUpdateCurrent(e.Id.ToString(), newMesh);
-            Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
-            // 将currentGeometry对象转换为glTFMeshPrimitives
-            foreach (KeyValuePair<string, GeometryData> kvp in currentGeometry.Dict)
-            {
-                glTFBinaryData elementBinary = AddGeometryMeta(kvp.Value, kvp.Key);
-                binFileData.Add(elementBinary);
-                string material_key = kvp.Key.Split('_')[1];
-                glTFMeshPrimitive primative = new glTFMeshPrimitive();
-                primative.attributes.POSITION = elementBinary.vertexAccessorIndex;
-                primative.indices = elementBinary.indexAccessorIndex;
-                primative.material = Materials.GetIndexFromUUID(material_key);
 
-                //UV坐标
-                primative.attributes.TEXCOORD_0 = elementBinary.uvAccessorIndex;
-                Meshes.CurrentItem.primitives.Add(primative);
+            if (currentGeometry.Dict.Count > 0)                     //Dict为空导致primitives为空没有意义
+            {
+
+                glTFMesh newMesh = new glTFMesh();
+                newMesh.name = e.Id.IntegerValue.ToString();          //TODO 过滤把group id给name 使数模能连接
+                newMesh.primitives = new List<glTFMeshPrimitive>();
+                Meshes.AddOrUpdateCurrent(e.Id.ToString(), newMesh);
+                Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
+                // 将currentGeometry对象转换为glTFMeshPrimitives
+                foreach (KeyValuePair<string, GeometryData> kvp in currentGeometry.Dict)
+                {
+                    glTFBinaryData elementBinary = AddGeometryMeta(kvp.Value, kvp.Key);
+                    binFileData.Add(elementBinary);
+                    string material_key = kvp.Key.Split('_')[1];
+                    glTFMeshPrimitive primative = new glTFMeshPrimitive();
+                    primative.attributes.POSITION = elementBinary.vertexAccessorIndex;
+                    primative.indices = elementBinary.indexAccessorIndex;
+                    if (material_key != "")
+                    {
+                        primative.material = Materials.GetIndexFromUUID(material_key);
+                    }
+
+                    //UV坐标
+                    primative.attributes.TEXCOORD_0 = elementBinary.uvAccessorIndex;
+                    Meshes.CurrentItem.primitives.Add(primative);
+                }
+
             }
         }
 

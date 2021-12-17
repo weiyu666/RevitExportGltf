@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
-using Autodesk.Revit.DB;
 
 namespace RevitExportGltf
 {
-   
+
 
     /// <summary>
     /// Container for holding a strict set of items
@@ -16,7 +16,7 @@ namespace RevitExportGltf
         private Dictionary<string, int> _dict = new Dictionary<string, int>();
         public List<T> List { get; } = new List<T>();
         public string CurrentKey { get; private set; }
-        public Dictionary<string,T> Dict
+        public Dictionary<string, T> Dict
         {
             get
             {

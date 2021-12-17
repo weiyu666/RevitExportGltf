@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
 namespace RevitExportGltf
 {
@@ -13,7 +9,7 @@ namespace RevitExportGltf
     /// </summary>
     public struct glTF
     {
-        public glTFVersion asset;
+        public glTFAsset asset;
         public List<glTFScene> scenes;
         public List<glTFNode> nodes;
         public List<glTFMesh> meshes;
@@ -24,14 +20,20 @@ namespace RevitExportGltf
         public List<glTFTexture> textures;
         public List<glTFImage> images;
         public List<glTFSampler> samplers;
+
+        public int defaultScene; //默认场景
+
     }
 
     /// <summary>
     /// 版本
     /// </summary>
-    public class glTFVersion
+    public class glTFAsset
     {
         public string version = "2.0";
+        public string minVersion = "2.0";
+        public string copyright = "2017 (c) Khronos Group";
+        public string generator = "The raw data exported from the revit plug-in of bimv is organized into gltf format";
     }
     /// <summary>
     /// 场景
@@ -84,6 +86,7 @@ namespace RevitExportGltf
     /// </summary>
     public class glTFMesh
     {
+        public string name { get; set; }        //与revit的group id 相对应
         public List<glTFMeshPrimitive> primitives { get; set; }
     }
 
@@ -278,6 +281,7 @@ namespace RevitExportGltf
 
     public class glTFSampler
     {
+        public string name;
         public float magFilter { get; set; }
 
         public float minFilter { get; set; }

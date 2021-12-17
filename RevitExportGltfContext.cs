@@ -247,15 +247,8 @@ namespace RevitExportGltf
             currentData.ElementName = currentElem.Name;
             try
             {
-                //在revit中不一定能获取到值
-                Parameter paraArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED);
-                if(paraArea!=null) 
-                    paraArea.AsValueString();
-                    
-                Parameter paraVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED);
-                if(paraVolum!=null) 
-                    paraVolum.AsValueString();
-
+                currentData.ElementArea = currentElem.get_Parameter(BuiltInParameter.HOST_AREA_COMPUTED).AsValueString();
+                currentData.ElementVolum = currentElem.get_Parameter(BuiltInParameter.HOST_VOLUME_COMPUTED).AsValueString();
             }
             catch
             {
@@ -448,7 +441,6 @@ namespace RevitExportGltf
                         currentAsset = node.GetAppearance();
                     }
                     //取得Asset中贴图信息
-                    //revit 2020版本AssetProperty的[]方法改为FindByName;asset.FindByName["unifiedbitmap_Bitmap"]!!!
                     string textureFile = (FindTextureAsset(currentAsset as AssetProperty)["unifiedbitmap_Bitmap"]
                         as AssetPropertyString).Value.Split('|')[0];
                     //用Asset中贴图信息和注册表里的材质库地址得到贴图文件所在位置

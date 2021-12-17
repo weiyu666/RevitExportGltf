@@ -27,4 +27,4 @@ gltf （作者本人的博客） 介绍https://blog.csdn.net/chenweiyu11962/arti
 
 解决材质的问题 https://zhuanlan.zhihu.com/p/80465384
 
-revit 二开环境配置
+revit 二开环境配置 https://static.app.yinxiang.com/embedded-web/profile/#/join?guid=1e6bb87f-5eb1-4654-aeb5-22c3cb67431c&channel=copylink&shardId=s61&ownerId=22360100
